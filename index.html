@@ -653,6 +653,14 @@ function derive(ym, sc){
       shortfall7: 0, laterNote: '', shortfall: 0}));
     rows.sort((a,b) => (b.plan7 + b.actual) - (a.plan7 + a.actual));
   }
+  let grossAll = 0, grossSkus = 0, grossIndia = 0, grossExp = 0, indiaSkus = 0, expSkus = 0;
+  if(prod){ const seen = new Set(), si = new Set(), se = new Set();
+    prod.rows.forEach(([dd, sk, q]) => {
+      grossAll += q; seen.add(A(sk));
+      if((prod.meta[sk] || [,0])[1]){ grossExp += q; se.add(A(sk)); }
+      else { grossIndia += q; si.add(A(sk)); }
+    });
+    grossSkus = seen.size; indiaSkus = si.size; expSkus = se.size; }
   const totForecast = sum(rows, 'need'), totActual = sum(rows, 'actual');
   const shortfall = sum(rows, 'shortfall');
   const excess = sum(rows, 'excess') + sum(cover, 'excess');
@@ -670,6 +678,10 @@ function derive(ym, sc){
     coverSkus: rows.filter(r => r.cover > 0).length + cover.filter(r => r.cover > 0).length,
     excessSkuList: rows.filter(r => r.excess > 0).concat(cover.filter(r => r.excess > 0)),
     intlQty: sum(international, 'qty'), uncodedFcQty: sum(uncodedFc, 'qty'),
+    grossAll, grossSkus, grossIndia, grossExp, indiaSkus, expSkus, prod,
+    planQty: sum(rows, 'plan7'), afterPlan: sum(rows, 'shortfall7'),
+    afterPlanSkus: rows.filter(r => r.shortfall7 > 0).length,
+    planSkus: rows.filter(r => r.plan7 > 0).length,
     hasForecast: fcList.length > 0, hasProd: !!prod};
 }
 
@@ -704,7 +716,9 @@ function renderMonths(){
 
 function renderScopes(){
   const el = document.getElementById('scopes');
-  el.innerHTML = SCOPES.map(s => {
+  const planYm = (state.plan7day && state.plan7day.meta && state.plan7day.meta.dateFrom || '').slice(0,7);
+  const showPlanTab = !!planYm && curMonth === planYm;
+  el.innerHTML = SCOPES.filter(s => s.k !== 'plan' || showPlanTab).map(s => {
     const d = derive(curMonth, s.k);
     const col = !d.hasForecast ? 'var(--faint)' : (d.fulfilPct >= d.expectedPct - TOL ? 'var(--green)' : 'var(--red)');
     return `<button class="scope ${scope === s.k ? 'on' : ''}" data-s="${s.k}">
@@ -794,10 +808,18 @@ document.addEventListener('click', function(e){
 
 function renderMetrics(d){
   document.getElementById('metrics').innerHTML = `
-    <div class="m"><span class="m-l">Forecast</span><span class="m-v">${fmt(d.totForecast)}</span>
-      <span class="m-s">${pl(d.rows.length,'SKU')} on plan</span></div>
-    <div class="m"><span class="m-l">Shortfall</span><span class="m-v c-red">${fmt(d.shortfall)}</span>
-      <span class="m-s">across ${pl(d.shortSkus,'SKU')} under forecast</span></div>
+    <div class="m"><span class="m-l">Total production</span><span class="m-v c-amber">${fmt(d.grossAll)}</span>
+      <span class="m-s">every FG code that ran in ${monthLabel(d.ym).split(' ')[0]} &middot; ${pl(d.grossSkus,'SKU')}</span></div>
+    <div class="m"><span class="m-l">India production</span><span class="m-v c-green">${fmt(d.grossIndia)}</span>
+      <span class="m-s">${pl(d.indiaSkus,'SKU')} &middot; ${d.grossAll ? (d.grossIndia / d.grossAll * 100).toFixed(1) : '0.0'}% of the line &middot; forecast SKUs plus unforecast</span></div>
+    <div class="m"><span class="m-l">Export production</span><span class="m-v c-teal">${fmt(d.grossExp)}</span>
+      <span class="m-s">${pl(d.expSkus,'SKU')} &middot; ${d.grossAll ? (d.grossExp / d.grossAll * 100).toFixed(1) : '0.0'}% of the line &middot; US / UK / TikTok</span></div>
+    <div class="m"><span class="m-l">India ${d.ym === state.carryInto ? 'total need' : 'forecast'}</span><span class="m-v">${fmt(d.totForecast)}</span>
+      <span class="m-s">${pl(d.rows.length,'SKU')} on plan${d.ym === state.carryInto ? ' &middot; incl. ' + fmt(d.rows.reduce((t,r)=>t+(r.carry||0),0)) + ' carried in' : ''} &middot; export not forecast</span></div>
+    <div class="m"><span class="m-l">India shortfall</span><span class="m-v c-red">${fmt(d.shortfall)}</span>
+      <span class="m-s">across ${pl(d.shortSkus,'SKU')} under ${d.ym === state.carryInto ? 'total need' : 'forecast'} &middot; ${d.totForecast ? (d.shortfall / d.totForecast * 100).toFixed(1) : '0.0'}% of it</span></div>
+    ${d.planQty > 0 ? `<div class="m"><span class="m-l">India shortfall after plan</span><span class="m-v c-red">${fmt(d.afterPlan)}</span>
+      <span class="m-s">${fmt(d.planQty)} planned across ${pl(d.planSkus,'SKU')} closes ${fmt(d.shortfall - d.afterPlan)} &middot; ${pl(d.afterPlanSkus,'SKU')} still short</span></div>` : ''}
     <div class="m"><span class="m-l">Built ahead (cover)</span><span class="m-v c-teal">${fmt(d.coverQty)}</span>
       <span class="m-s">${pl(d.coverSkus,'SKU')} over the ${monthLabel(d.ym).split(' ')[0]} need but within ${d.laterMonths.length ? monthLabel(d.ym).split(' ')[0].slice(0,3) + '+' + d.laterMonths.map(m => shortMonth(m).split(" '")[0]).join('+') : 'the horizon'}</span></div>
     <div class="m"><span class="m-l">True excess</span><span class="m-v c-green">${fmt(d.excess)}</span>
@@ -1021,9 +1043,19 @@ function renderTable(d){
   document.getElementById('tblTitle').textContent =
     scope === 'fk' ? 'Flipkart exclusive SKUs' : (scope === 'main' ? 'Mainline forecast SKUs' : 'Forecast SKUs');
   document.getElementById('tblHint').textContent = 'Tick mark on each bar is where the month should be';
+  const mLab = shortMonth(d.ym).split(" '")[0];
+  const carryLab = state.carryFrom ? shortMonth(state.carryFrom).split(" '")[0] : 'Prior';
+  const isCarryMonth = d.ym === state.carryInto;
+  const HDR = {
+    forecast: mLab + ' forecast',
+    carry: isCarryMonth ? carryLab + ' short' : 'Carry in',
+    need: isCarryMonth ? 'Total need' : mLab + ' need'
+  };
   document.querySelectorAll('#mainTbl thead tr:first-child th').forEach(th => {
-    th.innerHTML = th.innerHTML.replace(/<span class="ar">[^<]*<\/span>/, '');
-    if(th.dataset.k === sortKey) th.innerHTML += `<span class="ar">${sortDir === 1 ? '\u2191' : '\u2193'}</span>`;
+    const k = th.dataset.k;
+    if(HDR[k]) th.textContent = HDR[k];
+    else th.innerHTML = th.innerHTML.replace(/<span class="ar">[^<]*<\/span>/, '');
+    if(k === sortKey) th.innerHTML += `<span class="ar">${sortDir === 1 ? '\u2191' : '\u2193'}</span>`;
   });
 }
 
@@ -1188,7 +1220,8 @@ function renderPivot(){
 function renderPlan(){
   const sec = document.getElementById('planSection');
   const p = state.plan7day;
-  if(!p || !p.rows || !p.rows.length){ sec.style.display = 'none'; return; }
+  const planYm = (p && p.meta && p.meta.dateFrom || '').slice(0,7);
+  if(!p || !p.rows || !p.rows.length || curMonth !== planYm){ sec.style.display = 'none'; return; }
   sec.style.display = '';
   const m = p.meta;
   const scopeLabel = scope === 'fk' ? 'FK exclusive' : (scope === 'main' ? 'Mainline' : 'All');
@@ -1253,6 +1286,8 @@ function renderPlan(){
 }
 
 function renderAll(){
+  const _pYm = (state.plan7day && state.plan7day.meta && state.plan7day.meta.dateFrom || '').slice(0,7);
+  if(scope === 'plan' && (!_pYm || curMonth !== _pYm)) scope = 'all';
   if(!curMonth || !allMonths().includes(curMonth)){
     const m = allMonths();
     curMonth = m.includes('2026-09') ? '2026-09' : m[m.length - 1];
