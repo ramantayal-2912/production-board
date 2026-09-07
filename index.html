@@ -12,7 +12,7 @@
   :root{
     --bg:#0E1114; --panel:#161A20; --panel-2:#1C212A; --panel-3:#222834;
     --border:#282F39; --border-soft:#212730;
-    --text:#EDEFF2; --dim:#8B93A3; --faint:#5B6270;
+    --text:#F2F4F7; --dim:#B4BCCA; --faint:#98A1B2;
     --amber:#F5A623; --amber-soft:rgba(245,166,35,.32);
     --green:#3FC97E; --red:#EF5350; --teal:#4FD1C5; --violet:#A78BFA; --blue:#5B9DF9;
   }
@@ -58,9 +58,9 @@
   .scope.on{border-color:var(--amber-soft);background:var(--panel-2);}
   .scope::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:transparent;}
   .scope.on::after{background:var(--amber);}
-  .scope .st{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
-  .scope .sp{font-family:'IBM Plex Mono',monospace;font-size:13px;}
-  .scope .ss{font-size:10.5px;color:var(--faint);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+  .scope .st{font-size:13.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
+  .scope .sp{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;}
+  .scope .ss{font-size:12px;color:var(--dim);margin-top:6px;font-family:'IBM Plex Mono',monospace;line-height:1.55;}
 
   .banner{border:1px solid var(--border);background:var(--panel);border-radius:9px;padding:13px 16px;
     font-size:12.5px;color:var(--dim);line-height:1.6;margin-bottom:16px;display:flex;gap:11px;align-items:flex-start;}
@@ -104,9 +104,9 @@
 
   .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:13px;margin-bottom:26px;}
   .m{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px 17px;display:flex;flex-direction:column;gap:4px;}
-  .m-l{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase;}
+  .m-l{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--dim);text-transform:uppercase;font-weight:500;}
   .m-v{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;}
-  .m-s{font-size:10.5px;color:var(--faint);line-height:1.4;}
+  .m-s{font-size:12px;color:var(--dim);line-height:1.55;}
   .c-red{color:var(--red);} .c-green{color:var(--green);} .c-teal{color:var(--teal);}
   .c-amber{color:var(--amber);} .c-violet{color:var(--violet);} .c-dim{color:var(--dim);} .c-blue{color:var(--blue);}
 
@@ -121,7 +121,7 @@
 
   .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 13px;}
   .sec-head h2{font-size:16px;font-weight:600;letter-spacing:-.01em;}
-  .sec-head .hint{font-size:11.5px;color:var(--faint);}
+  .sec-head .hint{font-size:12.5px;color:var(--dim);}
   .split{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:28px;}
   .rank{padding:16px 18px;}
   .rank h3{font-size:13px;font-weight:600;margin-bottom:3px;}
@@ -208,7 +208,7 @@
   #gateMsg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--red);margin-top:12px;min-height:16px;}
   .shake{animation:shake .32s;}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-  .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--faint);line-height:1.7;}
+  .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--dim);line-height:1.75;}
   .foot b{color:var(--dim);font-weight:600;}
   @media (max-width:980px){
     body{padding:20px 14px 70px;}
@@ -329,22 +329,6 @@
   <div id="fcOnly">
   <div class="metrics" id="metrics"></div>
   <div id="fkDeadline"></div>
-
-  <div class="comb-wrap">
-    <div class="sec-head">
-      <h2>Every forecast SKU, one bar</h2>
-      <div class="hint">Ordered by forecast size &middot; bar height = attainment, capped at 100%</div>
-    </div>
-    <div class="comb" id="comb"></div>
-    <div class="comb-legend">
-      <span><i style="background:var(--green)"></i>Complete</span>
-      <span><i style="background:var(--teal)"></i>Ahead of pace</span>
-      <span><i style="background:var(--amber)"></i>On pace</span>
-      <span><i style="background:var(--red)"></i>Behind pace</span>
-      <span><i style="background:#3A414D"></i>Nothing produced</span>
-    </div>
-    <div class="comb-note" id="combNote"></div>
-  </div>
 
   <div class="sec-head">
     <h2 id="tblTitle">Forecast SKUs</h2>
@@ -759,6 +743,13 @@ function renderBanner(d){
       : `<b>No production recorded for ${monthLabel(d.ym)} yet</b> &mdash; the whole forecast reads as shortfall until the daily file covers it`,
     `<b>${d.rows.length}</b> SKU${d.rows.length === 1 ? '' : 's'} carry a forecast`];
   if(d.uncodedFc.length) bits.push(`<b>${d.uncodedFc.length}</b> NPD line${d.uncodedFc.length > 1 ? 's' : ''} (${fmt(d.uncodedFcQty)} units) have no FG code yet and are not scored`);
+  const pm = state.plan7day && state.plan7day.meta;
+  if(pm && pm.dateFrom && pm.dateFrom.slice(0,7) === d.ym){
+    const dl = ds => { const p = String(ds).split('-'); return +p[2] + ' ' + MONTH_NAMES[+p[1]-1].slice(0,3); };
+    bits.push('Plan loaded <b>' + dl(pm.dateFrom) + ' &ndash; ' + dl(pm.dateTo) + '</b> (' + fmt(pm.total) + ' units, ' + pl(pm.skus,'SKU') + ')');
+  } else if(pm && pm.dateFrom){
+    bits.push('<b>No plan for this month</b> &mdash; the loaded plan covers ' + monthLabel(pm.dateFrom.slice(0,7)));
+  } else bits.push('<b>No plan loaded</b>');
   if(scope === 'fk') bits.push('Flipkart exclusives only');
   if(scope === 'main') bits.push('Flipkart exclusives held out');
   el.innerHTML = `<div class="banner"><span class="dot"></span><div>${bits.join(' &middot; ')}.</div></div>`;
@@ -979,18 +970,6 @@ function renderFkDeadline(){
   }));
 }
 
-function renderComb(d){
-  const rows = d.rows.slice().sort((a,b) => b.forecast - a.forecast);
-  document.getElementById('comb').innerHTML = rows.map(r =>
-    `<div class="comb-bar" style="height:${Math.max(2, Math.min(r.pct, 100))}%;background:${STATUS_COL[r.status]}"
-      title="${esc(r.sku)} &mdash; ${esc(r.desc)}&#10;Forecast ${fmt(r.forecast)} / Produced ${fmt(r.actual)} (${fmtPct(r.pct)})"></div>`).join('')
-    || '<div class="empty">No forecast SKUs in this view.</div>';
-  const n = Math.min(12, rows.length);
-  const bad = rows.slice(0, n).filter(r => r.status === 'Behind' || r.status === 'Not started').length;
-  document.getElementById('combNote').innerHTML = rows.length
-    ? `Left edge is the biggest forecast line. <b style="color:var(--dim)">${bad}</b> of the ${n} largest forecast SKUs are behind pace or untouched &mdash; that concentration is what a total-level number hides.`
-    : '';
-}
 
 
 function renderTable(d){
@@ -1300,7 +1279,7 @@ function renderAll(){
   if(fcOnly) fcOnly.style.display = planOnly ? 'none' : '';
   const gaugeCard = document.getElementById('lamps') ? document.getElementById('lamps').parentElement : null;
   if(gaugeCard) gaugeCard.style.display = planOnly ? 'none' : '';
-  renderMetrics(d); renderFkDeadline(); renderComb(d); renderPlan(); renderTable(d); renderOff(d); renderFoot(d);
+  renderMetrics(d); renderFkDeadline(); renderPlan(); renderTable(d); renderOff(d); renderFoot(d);
 }
 
 /* ---------- interactions ---------- */
